@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Tower Defense - Cyber Valley</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.160.0?dev",
+          "three/": "https://esm.sh/three@0.160.0&dev/"
+        }
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+      
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: 'Rajdhani', sans-serif;
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+      }
+      
+      #game-ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 100;
+      }
+      
+      .ui-panel {
+        position: absolute;
+        background: linear-gradient(145deg, rgba(20, 20, 40, 0.95), rgba(30, 30, 60, 0.95));
+        border-radius: 8px;
+        padding: 15px;
+        color: #00ffff;
+        font-weight: 600;
+        pointer-events: auto;
+        border: 2px solid #00ffff;
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+      }
+      
+      .top-panel {
+        top: 15px;
+        left: 15px;
+        display: flex;
+        align-items: center;
+        gap: 25px;
+        font-size: 18px;
+        font-weight: 700;
+        font-family: 'Orbitron', monospace;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      }
+      
+      .wave-panel {
+        top: 15px;
+        right: 15px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 700;
+        font-family: 'Orbitron', monospace;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      }
+      
+      .tower-panel {
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+      }
+      
+      .tower-button {
+        width: 85px;
+        height: 95px;
+        background: linear-gradient(145deg, #1a1a2e, #16213e);
+        border: 2px solid #00ffff;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-around;
+        color: #00ffff;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: 'Rajdhani', sans-serif;
+        transition: all 0.3s ease;
+        padding: 8px 0;
+        box-sizing: border-box;
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.2), inset 0 0 15px rgba(0, 255, 255, 0.1);
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .tower-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+        transition: left 0.5s;
+      }
+      
+      .tower-button:hover::before {
+        left: 100%;
+      }
+      
+      .tower-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 25px rgba(0, 255, 255, 0.4), inset 0 0 25px rgba(0, 255, 255, 0.2);
+        border-color: #00ffff;
+      }
+      
+      .tower-button.selected {
+        background: linear-gradient(145deg, #0f3460, #1a1a2e);
+        border-color: #ff6b35;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4), inset 0 0 20px rgba(255, 107, 53, 0.1);
+        color: #ff6b35;
+        text-shadow: 0 0 5px rgba(255, 107, 53, 0.5);
+      }
+      
+      .tower-icon {
+        width: 40px;
+        height: 40px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 255, 255, 0.1);
+        border-radius: 4px;
+        border: 1px solid rgba(0, 255, 255, 0.3);
+        box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+      }
+      
+      .tower-cost {
+        font-weight: 700;
+        color: #00ffff;
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        font-size: 10px;
+        font-family: 'Orbitron', monospace;
+      }
+      /* Futuristic Tech Icons */
+      .basic-icon::before {
+        content: '⚡';
+        font-size: 20px;
+        line-height: 1;
+        color: #00ffff;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+      }
+      .rapid-icon::before {
+        content: '🔫';
+        font-size: 20px;
+        line-height: 1;
+        color: #00ffff;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+      }
+      .rapid-icon::after {
+        content: '⚡';
+        font-size: 12px;
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        color: #ff6b35;
+        text-shadow: 0 0 5px rgba(255, 107, 53, 0.8);
+      }
+      .frost-icon::before {
+        content: '❄';
+        font-size: 20px;
+        line-height: 1;
+        color: #00ffff;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+      }
+      .frost-icon::after {
+        content: '🔵';
+        font-size: 10px;
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        filter: drop-shadow(0 0 3px rgba(0, 255, 255, 0.8));
+      }
+      .laser-icon::before {
+        content: '🔴';
+        font-size: 20px;
+        line-height: 1;
+        color: #ff4757;
+        text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+      }
+      .laser-icon::after {
+        content: '⚡';
+        font-size: 10px;
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        color: #00ffff;
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+      }
+      .artillery-icon::before {
+        content: '💥';
+        font-size: 20px;
+        line-height: 1;
+        color: #ff6b35;
+        text-shadow: 0 0 10px rgba(255, 107, 53, 0.8);
+      }
+      .artillery-icon::after {
+        content: '🔴';
+        font-size: 10px;
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        filter: drop-shadow(0 0 3px rgba(255, 71, 87, 0.8));
+      }
+      .tesla-icon::before {
+        content: '⚡';
+        font-size: 20px;
+        line-height: 1;
+        color: #ffd700;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+      }
+      .tesla-icon::after {
+        content: '🔵';
+        font-size: 12px;
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        color: #00ffff;
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+      }
+      
+      .money {
+        color: #00ffff;
+        font-size: 20px;
+        font-weight: 700;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        font-family: 'Orbitron', monospace;
+      }
+      
+      .start-button {
+        bottom: 15px;
+        right: 15px;
+        background: linear-gradient(145deg, #1a1a2e, #16213e);
+        border: 2px solid #00ffff;
+        color: #00ffff;
+        padding: 15px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 700;
+        font-family: 'Orbitron', monospace;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.1);
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .start-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+        transition: left 0.5s;
+      }
+      
+      .start-button:hover::before {
+        left: 100%;
+      }
+      
+      .start-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 30px rgba(0, 255, 255, 0.2);
+        border-color: #00ffff;
+      }
+      
+      #upgrade-panel {
+        position: absolute;
+        width: 200px;
+        background: linear-gradient(145deg, rgba(20, 20, 40, 0.98), rgba(30, 30, 60, 0.98));
+        border: 2px solid #00ffff;
+        border-radius: 8px;
+        color: #00ffff;
+        padding: 20px;
+        font-family: 'Rajdhani', sans-serif;
+        display: none; /* Initially hidden */
+        pointer-events: auto;
+        z-index: 200;
+        text-align: center;
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.4), inset 0 0 30px rgba(0, 255, 255, 0.1);
+        backdrop-filter: blur(15px);
+      }
+      
+      #upgrade-panel h3 {
+        margin: 0 0 15px;
+        font-size: 16px;
+        text-transform: uppercase;
+        position: relative;
+        font-weight: 700;
+        color: #00ffff;
+        font-family: 'Orbitron', monospace;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+      }
+      
+      #upgrade-panel p {
+        margin: 8px 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #00ffff;
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+      }
+      
+      .upgrade-button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        background: linear-gradient(145deg, #1a1a2e, #16213e);
+        border: 2px solid #00ffff;
+        color: #00ffff;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Rajdhani', sans-serif;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.2), inset 0 0 15px rgba(0, 255, 255, 0.1);
+        text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+      }
+      .sell-button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        background: linear-gradient(145deg, #2e1a1a, #3e1616);
+        border: 2px solid #ff4757;
+        color: #ff4757;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: 'Rajdhani', sans-serif;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 15px rgba(255, 71, 87, 0.2), inset 0 0 15px rgba(255, 71, 87, 0.1);
+        text-shadow: 0 0 5px rgba(255, 71, 87, 0.5);
+      }
+      .sell-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(255, 71, 87, 0.4), inset 0 0 20px rgba(255, 71, 87, 0.2);
+      }
+      .upgrade-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), inset 0 0 20px rgba(0, 255, 255, 0.2);
+      }
+
+      /* Map Portals */
+      #map-portals {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .portal {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: portalPulse 2s ease-in-out infinite;
+      }
+
+      .start-portal {
+        top: 20%;
+        left: 10%;
+      }
+
+      .end-portal {
+        bottom: 20%;
+        right: 10%;
+      }
+
+      .portal-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 4px solid #00ffff;
+        border-radius: 50%;
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.8), inset 0 0 30px rgba(0, 255, 255, 0.2);
+        animation: portalRotate 3s linear infinite;
+      }
+
+      .portal-core {
+        position: absolute;
+        width: 60%;
+        height: 60%;
+        background: radial-gradient(circle, rgba(0, 255, 255, 0.8) 0%, rgba(0, 255, 255, 0.2) 70%, transparent 100%);
+        border-radius: 50%;
+        animation: portalCore 1.5s ease-in-out infinite alternate;
+      }
+
+      .portal-glow {
+        position: absolute;
+        width: 120%;
+        height: 120%;
+        background: radial-gradient(circle, rgba(0, 255, 255, 0.3) 0%, transparent 70%);
+        border-radius: 50%;
+        animation: portalGlow 2s ease-in-out infinite;
+      }
+
+      .portal-label {
+        position: absolute;
+        bottom: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #00ffff;
+        font-family: 'Orbitron', monospace;
+        font-size: 12px;
+        font-weight: 700;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .end-portal .portal-ring {
+        border-color: #ff4757;
+        box-shadow: 0 0 30px rgba(255, 71, 87, 0.8), inset 0 0 30px rgba(255, 71, 87, 0.2);
+      }
+
+      .end-portal .portal-core {
+        background: radial-gradient(circle, rgba(255, 71, 87, 0.8) 0%, rgba(255, 71, 87, 0.2) 70%, transparent 100%);
+      }
+
+      .end-portal .portal-glow {
+        background: radial-gradient(circle, rgba(255, 71, 87, 0.3) 0%, transparent 70%);
+      }
+
+      .end-portal .portal-label {
+        color: #ff4757;
+        text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+      }
+
+      @keyframes portalPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
+
+      @keyframes portalRotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes portalCore {
+        0% { opacity: 0.6; transform: scale(0.8); }
+        100% { opacity: 1; transform: scale(1.2); }
+      }
+
+      @keyframes portalGlow {
+        0%, 100% { opacity: 0.3; transform: scale(0.9); }
+        50% { opacity: 0.6; transform: scale(1.1); }
+      }
+
+      /* Enhanced Map Background */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+          radial-gradient(circle at 20% 20%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(255, 71, 87, 0.1) 0%, transparent 50%),
+          linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+        z-index: -1;
+      }
+
+      /* Enemy Path Visualization */
+      body::after {
+        content: '';
+        position: fixed;
+        top: 20%;
+        left: 10%;
+        right: 10%;
+        bottom: 20%;
+        background: linear-gradient(45deg, 
+          transparent 0%, 
+          rgba(0, 255, 255, 0.1) 20%, 
+          rgba(0, 255, 255, 0.2) 50%, 
+          rgba(0, 255, 255, 0.1) 80%, 
+          transparent 100%);
+        border-radius: 20px;
+        z-index: -1;
+        animation: pathGlow 3s ease-in-out infinite;
+      }
+
+      @keyframes pathGlow {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.6; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-ui">
+      <div class="ui-panel top-panel">
+        <div class="money">$<span id="money">150</span></div>
+        <div>Lives: <span id="lives">20</span></div>
+      </div>
+      
+      <div class="ui-panel wave-panel">
+        <div>WAVE <span id="wave">1</span></div>
+        <div><span id="enemies-left">10</span> enemies left</div>
+      </div>
+      
+      <div class="ui-panel tower-panel">
+        <div class="tower-button" data-tower="basic">
+          <div class="tower-icon basic-icon"></div>
+          <div>Plasma Rifle</div>
+          <div class="tower-cost">$50</div>
+        </div>
+        <div class="tower-button" data-tower="rapid">
+          <div class="tower-icon rapid-icon"></div>
+          <div>Gatling Laser</div>
+          <div class="tower-cost">$100</div>
+        </div>
+        <div class="tower-button" data-tower="frost">
+          <div class="tower-icon frost-icon"></div>
+          <div>Cryo Cannon</div>
+          <div class="tower-cost">$125</div>
+        </div>
+        <div class="tower-button" data-tower="laser">
+          <div class="tower-icon laser-icon"></div>
+          <div>Beam Cannon</div>
+          <div class="tower-cost">$200</div>
+        </div>
+        <div class="tower-button" data-tower="artillery">
+            <div class="tower-icon artillery-icon"></div>
+            <div>Missile Pod</div>
+            <div class="tower-cost">$250</div>
+        </div>
+        <div class="tower-button" data-tower="tesla">
+            <div class="tower-icon tesla-icon"></div>
+            <div>Tesla Coil</div>
+            <div class="tower-cost">$350</div>
+        </div>
+      </div>
+      
+      <button class="start-button" id="start-wave">
+        START WAVE
+      </button>
+      
+      <div id="upgrade-panel">
+        <h3 id="upgrade-tower-name">Tower</h3>
+        <p>Damage: <span id="upgrade-damage">0</span></p>
+        <p>Range: <span id="upgrade-range">0</span></p>
+        <p>Rate: <span id="upgrade-rate">0</span></p>
+        <button class="upgrade-button" id="upgrade-damage-btn" data-upgrade="damage">Upgrade Damage ($100)</button>
+        <button class="upgrade-button" id="upgrade-range-btn" data-upgrade="range">Upgrade Range ($75)</button>
+        <button class="sell-button" id="sell-tower-btn">Sell Tower</button>
+        <div id="upgrade-panel-close" style="position: absolute; top: 5px; right: 8px; cursor: pointer; font-size: 18px; color: #b0bec5;">&times;</div>
+      </div>
+    </div>
+
+    <!-- Map Portals -->
+    <div id="map-portals">
+      <div class="portal start-portal">
+        <div class="portal-ring"></div>
+        <div class="portal-core"></div>
+        <div class="portal-glow"></div>
+        <div class="portal-label">SPAWN</div>
+      </div>
+      <div class="portal end-portal">
+        <div class="portal-ring"></div>
+        <div class="portal-core"></div>
+        <div class="portal-glow"></div>
+        <div class="portal-label">EXIT</div>
+      </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/ChatManager.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/ImageGenerator.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/ProgressLogger.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/OGP.js"></script>
+  </body>
+</html>
